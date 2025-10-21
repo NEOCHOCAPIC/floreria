@@ -1,32 +1,89 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Tag, Flame, TrendingUp } from 'lucide-react';
+import { Flower2, Sparkles } from 'lucide-react';
 import { useFirestoreCollection } from '../hooks/useFirestoreData';
 
 export default function Promociones() {
   const [activeFilter, setActiveFilter] = useState('todos');
-  const [promotions, setPromotions] = useState([]);
+  const [discountedProducts, setDiscountedProducts] = useState([]);
 
   const { data: promotionsData } = useFirestoreCollection('promotions');
+  const { data: flowersData } = useFirestoreCollection('flowers');
+  const { data: jewelryData } = useFirestoreCollection('jewelry');
 
   useEffect(() => {
-    if (promotionsData) {
-      // Filtrar solo promociones activas y que estén dentro del rango de fechas
+    if (promotionsData && flowersData && jewelryData) {
       const now = new Date().toISOString().split('T')[0];
+      
+      // Filtrar solo promociones activas y dentro de rango de fechas
       const activePromos = (Array.isArray(promotionsData) ? promotionsData : []).filter(promo => {
         if (!promo.isActive) return false;
         if (promo.startDate && now < promo.startDate) return false;
         if (promo.endDate && now > promo.endDate) return false;
         return true;
       });
-      setPromotions(activePromos);
+
+      // Combinar flores y joyas
+      const allProducts = [
+        ...((Array.isArray(flowersData) ? flowersData : []).map(p => ({ ...p, type: 'flowers' }))),
+        ...((Array.isArray(jewelryData) ? jewelryData : []).map(p => ({ ...p, type: 'jewelry' })))
+      ];
+
+      // Para cada producto, buscar si tiene promoción activa
+      const productsWithDiscount = allProducts.map(product => {
+        const applicablePromos = activePromos.filter(p => {
+          // Aplicable a todas
+          if (p.applicableTo === 'all') return true;
+          
+          // Aplicable a tipo (flowers/jewelry)
+          if (p.applicableTo === product.type) return true;
+          
+          // Aplicable a categoría específica
+          if (p.applicableTo === 'specific_category' && 
+              p.productType === product.type && 
+              p.specificCategory === product.category) {
+            return true;
+          }
+          
+          return false;
+        });
+
+        if (applicablePromos.length === 0) return null;
+
+        // Calcular precio final con todos los descuentos
+        let finalPrice = product.price;
+        for (const promo of applicablePromos) {
+          if (promo.discountType === 'percentage') {
+            finalPrice = finalPrice * (1 - promo.discountValue / 100);
+          } else if (promo.discountType === 'fixed') {
+            finalPrice = finalPrice - promo.discountValue;
+          }
+        }
+        finalPrice = Math.max(0, finalPrice);
+
+        const discount = product.price - finalPrice;
+        const discountPercentage = product.price > 0 
+          ? ((discount / product.price) * 100).toFixed(1)
+          : '0';
+
+        return {
+          ...product,
+          originalPrice: product.price,
+          finalPrice,
+          discount,
+          discountPercentage,
+          promotions: applicablePromos
+        };
+      }).filter(p => p !== null);
+
+      setDiscountedProducts(productsWithDiscount);
     }
-  }, [promotionsData]);
+  }, [promotionsData, flowersData, jewelryData]);
 
   const pageContent = {
-    title: 'Promociones del Mes',
-    emoji: '🎉',
-    subtitle: '¡Aprovecha estas ofertas especiales!',
+    title: 'Ofertas del Mes',
+    emoji: '🔥',
+    subtitle: '¡Productos con descuento disponibles ahora!',
   };
 
   const filters = [
@@ -35,14 +92,9 @@ export default function Promociones() {
     { id: 'jewelry', name: 'Joyas' },
   ];
 
-  // Colores gradientes para las promociones (reservado para futura expansión)
   const filteredPromos = activeFilter === 'todos'
-    ? promotions
-    : promotions.filter(p => 
-        p.applicableTo === activeFilter || 
-        p.applicableTo === 'all' ||
-        (p.applicableTo === 'specific_category' && p.productType === activeFilter)
-      );
+    ? discountedProducts
+    : discountedProducts.filter(p => p.type === activeFilter);
 
   return (
     <main className="flex-grow">
@@ -84,121 +136,107 @@ export default function Promociones() {
           ))}
         </motion.div>
 
-        {/* Grid de Promociones */}
+        {/* Grid de Productos con Descuento */}
         <motion.div
           layout
-          className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16"
         >
           {filteredPromos.length === 0 ? (
-            <div className="col-span-1 md:col-span-2 text-center py-16 text-gray-500">
-              <p className="text-lg">No hay promociones disponibles en este momento. ¡Vuelve pronto!</p>
+            <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-16 text-gray-500">
+              <p className="text-lg">No hay productos en oferta en este momento. ¡Vuelve pronto!</p>
             </div>
           ) : (
-            filteredPromos.map((promo, idx) => {
-              const colorClasses = [
-                'from-pink-500 to-rose-500',
-                'from-purple-500 to-blue-500',
-                'from-pink-400 to-purple-400',
-                'from-blue-500 to-cyan-500',
-                'from-red-500 to-pink-500',
-                'from-amber-500 to-yellow-500',
-                'from-green-500 to-emerald-500',
-                'from-indigo-500 to-purple-500',
-              ];
-              const color = colorClasses[idx % colorClasses.length];
-              const discountDisplay = promo.discountType === 'percentage' 
-                ? `${promo.discountValue}%` 
-                : `$${promo.discountValue.toLocaleString()}`;
-
-              return (
-                <motion.div
-                  key={promo.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  whileHover={{ scale: 1.02 }}
-                  className={`bg-gradient-to-r ${color} rounded-2xl shadow-lg hover:shadow-2xl transition-all overflow-hidden text-white relative`}
-                >
-                  {/* Badge flotante */}
-                  <div className="absolute top-4 right-4 z-10">
-                    <motion.div
-                      animate={{ rotate: [0, 10, -10, 0] }}
-                      transition={{ duration: 3, repeat: Infinity }}
-                      className="bg-white bg-opacity-20 backdrop-blur rounded-lg p-3"
-                    >
-                      <div className="text-3xl font-bold text-center">
-                        {discountDisplay}
-                      </div>
-                      <div className="text-xs font-semibold text-center">
-                        {promo.discountType === 'percentage' ? 'OFF' : 'AHORRO'}
-                      </div>
-                    </motion.div>
+            filteredPromos.map((product, idx) => (
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                whileHover={{ scale: 1.05 }}
+                className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all overflow-hidden"
+              >
+                {/* Imagen */}
+                <div className="w-full h-64 bg-gradient-to-b from-pink-300 via-purple-200 to-pink-100 flex items-center justify-center overflow-hidden relative">
+                  {product.imageUrl ? (
+                    <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-8xl">
+                      {product.type === 'flowers' ? '🌹' : '💎'}
+                    </span>
+                  )}
+                  
+                  {/* Badge de Descuento */}
+                  <div className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1 rounded-full font-bold text-sm shadow-lg">
+                    -{product.discountPercentage}%
                   </div>
 
-                  {/* Contenido */}
-                  <div className="p-8">
-                    <div className="flex items-start gap-3 mb-3">
-                      <span className="text-4xl">🎁</span>
-                      <div className="flex-1">
-                        <h3 className="text-2xl md:text-3xl font-bold leading-tight">
-                          {promo.name}
-                        </h3>
-                        <p className="text-xs text-white/70 mt-1 capitalize">
-                          {promo.applicableTo === 'all' 
-                            ? 'Todas las categorías' 
-                            : promo.applicableTo === 'flowers' 
-                            ? 'Flores' 
-                            : promo.applicableTo === 'jewelry'
-                            ? 'Joyas'
-                            : `${promo.productType === 'flowers' ? 'Flores' : 'Joyas'} - ${promo.specificCategory}`
-                          }
-                        </p>
-                      </div>
-                    </div>
+                  {/* Badge "EN OFERTA" */}
+                  <div className="absolute top-3 left-3 bg-yellow-400 text-gray-900 px-3 py-1 rounded-full font-bold text-xs shadow-lg flex items-center gap-1">
+                    <Sparkles size={14} />
+                    EN OFERTA
+                  </div>
+                </div>
 
-                    <p className="text-sm md:text-base text-white/90 mb-6">
-                      {promo.description}
+                {/* Contenido */}
+                <div className="p-6">
+                  <h3 className="text-xl font-bold mb-2 text-gray-800 flex items-center gap-2">
+                    <Flower2 className="text-pink-500" size={20} />
+                    {product.name}
+                  </h3>
+
+                  {product.category && (
+                    <p className="text-sm text-gray-500 mb-3">
+                      {product.category}
                     </p>
+                  )}
 
-                    {/* Fechas válidas */}
-                    {(promo.startDate || promo.endDate) && (
-                      <div className="text-xs text-white/70 mb-6 border-t border-white/20 pt-3">
-                        📅 {promo.startDate && `Desde ${promo.startDate}`} {promo.startDate && promo.endDate && 'hasta'} {promo.endDate && `hasta ${promo.endDate}`}
-                      </div>
-                    )}
+                  <p className="text-gray-600 text-sm mb-4">
+                    {product.description || 'Producto especial en oferta.'}
+                  </p>
 
-                    {/* Botones */}
-                    <div className="flex gap-3">
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="flex-1 bg-white text-gray-900 font-bold py-2 px-4 rounded-lg hover:bg-gray-100 transition flex items-center justify-center gap-2"
-                      >
-                        <Tag size={18} />
-                        Ver Oferta
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="flex-1 bg-white/20 hover:bg-white/30 font-bold py-2 px-4 rounded-lg transition flex items-center justify-center gap-2 border border-white/30"
-                      >
-                        <TrendingUp size={18} />
-                        Más Info
-                      </motion.button>
+                  {/* Promociones que aplican */}
+                  <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-xs font-semibold text-blue-900 mb-2">💰 Promociones aplicadas:</p>
+                    <div className="space-y-1">
+                      {product.promotions.map((promo, i) => (
+                        <p key={i} className="text-xs text-blue-800">
+                          • {promo.name} ({promo.discountType === 'percentage' ? `${promo.discountValue}%` : `$${promo.discountValue}`})
+                        </p>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Indicador de fuego */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/30">
-                    <motion.div
-                      animate={{ width: ['0%', '100%'] }}
-                      transition={{ duration: 3, repeat: Infinity }}
-                      className="h-full bg-white"
-                    ></motion.div>
+                  {/* Precios */}
+                  <div className="mb-4">
+                    <div className="space-y-1">
+                      {/* Precio Original (Tachado) */}
+                      <div className="text-sm text-gray-400 line-through">
+                        ${product.originalPrice.toLocaleString()}
+                      </div>
+                      
+                      {/* Precio Final (Grande y Rojo) */}
+                      <div className="text-3xl font-bold text-red-600">
+                        ${product.finalPrice.toLocaleString()}
+                      </div>
+                      
+                      {/* Ahorro */}
+                      <div className="text-sm text-green-600 font-semibold">
+                        💚 Ahorras: ${product.discount.toLocaleString()}
+                      </div>
+                    </div>
                   </div>
-                </motion.div>
-              );
-            })
+
+                  {/* Botón */}
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="w-full bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white font-semibold py-3 px-6 rounded-lg transition"
+                  >
+                    🔥 ¡Aprovechar Descuento!
+                  </motion.button>
+                </div>
+              </motion.div>
+            ))
           )}
         </motion.div>
 
@@ -207,14 +245,14 @@ export default function Promociones() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.8 }}
-          className="text-center text-gray-600 italic max-w-3xl mx-auto p-8 bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl border border-orange-200"
+          className="text-center text-gray-600 italic max-w-3xl mx-auto p-8 bg-gradient-to-r from-red-50 to-pink-50 rounded-2xl border border-red-200"
         >
           <div className="flex items-center justify-center gap-2 mb-2">
-            <Flame size={20} className="text-orange-500" />
-            <p className="text-lg font-semibold">¡Promociones por Tiempo Limitado!</p>
+            <Sparkles size={20} className="text-red-500" />
+            <p className="text-lg font-semibold">¡Ofertas por Tiempo Limitado!</p>
           </div>
           <p>
-            ⏰ Las ofertas son válidas mientras el inventario disponible. Consulta con nuestro equipo en tienda para obtener más detalles sobre cada promoción.
+            ⏰ Los precios y descuentos son válidos mientras haya inventario disponible. Consulta con nuestro equipo en tienda para obtener más detalles.
           </p>
         </motion.div>
       </div>
