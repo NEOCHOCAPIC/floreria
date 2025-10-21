@@ -11,12 +11,20 @@ export default function PromotionsEditor() {
   const [message, setMessage] = useState('');
   const [expandedPromotion, setExpandedPromotion] = useState(null);
 
+  // Traer categorías
+  const { data: flowerCategoriesData } = useFirestoreCollection('flowerCategories');
+  const { data: jewelryCategoriesData } = useFirestoreCollection('jewelryCategories');
+  const [flowerCategories, setFlowerCategories] = useState([]);
+  const [jewelryCategories, setJewelryCategories] = useState([]);
+
   const [newPromotion, setNewPromotion] = useState({
     name: '',
     description: '',
     discountType: 'percentage', // percentage or fixed
     discountValue: '',
-    applicableTo: 'all', // all, flowers, jewelry
+    applicableTo: 'all', // all, flowers, jewelry, specific_category
+    specificCategory: '', // Nombre de categoría específica
+    productType: 'flowers', // flowers o jewelry (cuando es específica)
     startDate: '',
     endDate: '',
     isActive: true
@@ -25,6 +33,18 @@ export default function PromotionsEditor() {
   useEffect(() => {
     fetchPromotions();
   }, []);
+
+  useEffect(() => {
+    if (flowerCategoriesData) {
+      setFlowerCategories(Array.isArray(flowerCategoriesData) ? flowerCategoriesData : []);
+    }
+  }, [flowerCategoriesData]);
+
+  useEffect(() => {
+    if (jewelryCategoriesData) {
+      setJewelryCategories(Array.isArray(jewelryCategoriesData) ? jewelryCategoriesData : []);
+    }
+  }, [jewelryCategoriesData]);
 
   const fetchPromotions = async () => {
     try {
@@ -56,7 +76,8 @@ export default function PromotionsEditor() {
 
     try {
       setSaving(true);
-      await addDoc(collection(db, 'promotions'), {
+      
+      const promotionData = {
         name: newPromotion.name,
         description: newPromotion.description,
         discountType: newPromotion.discountType,
@@ -66,7 +87,15 @@ export default function PromotionsEditor() {
         endDate: newPromotion.endDate,
         isActive: newPromotion.isActive,
         createdAt: new Date()
-      });
+      };
+
+      // Si es categoría específica, agrega los campos adicionales
+      if (newPromotion.applicableTo === 'specific_category') {
+        promotionData.productType = newPromotion.productType;
+        promotionData.specificCategory = newPromotion.specificCategory;
+      }
+
+      await addDoc(collection(db, 'promotions'), promotionData);
 
       setNewPromotion({
         name: '',
@@ -74,6 +103,8 @@ export default function PromotionsEditor() {
         discountType: 'percentage',
         discountValue: '',
         applicableTo: 'all',
+        specificCategory: '',
+        productType: 'flowers',
         startDate: '',
         endDate: '',
         isActive: true
@@ -164,6 +195,7 @@ export default function PromotionsEditor() {
             <option value="all">Todas las categorías</option>
             <option value="flowers">Solo Flores</option>
             <option value="jewelry">Solo Joyas</option>
+            <option value="specific_category">Categoría Específica</option>
           </select>
 
           {/* Fecha inicio */}
@@ -173,6 +205,40 @@ export default function PromotionsEditor() {
             onChange={(e) => setNewPromotion({ ...newPromotion, startDate: e.target.value })}
             className="px-4 py-2 border-2 border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
+
+          {/* Selectores de categoría específica (condicionales) */}
+          {newPromotion.applicableTo === 'specific_category' && (
+            <>
+              <select
+                value={newPromotion.productType}
+                onChange={(e) => setNewPromotion({ ...newPromotion, productType: e.target.value })}
+                className="px-4 py-2 border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50"
+              >
+                <option value="flowers">Tipo: Flores</option>
+                <option value="jewelry">Tipo: Joyas</option>
+              </select>
+
+              <select
+                value={newPromotion.specificCategory}
+                onChange={(e) => setNewPromotion({ ...newPromotion, specificCategory: e.target.value })}
+                className="px-4 py-2 border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-blue-50"
+              >
+                <option value="">Selecciona una categoría...</option>
+                {newPromotion.productType === 'flowers' 
+                  ? flowerCategories.map((cat) => (
+                      <option key={cat.id} value={cat.name}>
+                        {cat.name}
+                      </option>
+                    ))
+                  : jewelryCategories.map((cat) => (
+                      <option key={cat.id} value={cat.name}>
+                        {cat.name}
+                      </option>
+                    ))
+                }
+              </select>
+            </>
+          )}
 
           {/* Fecha fin */}
           <input
@@ -235,6 +301,7 @@ export default function PromotionsEditor() {
                   <h4 className="font-bold text-lg text-gray-800">{promo.name}</h4>
                   <p className="text-sm text-gray-500 mt-1">
                     {promo.discountType === 'percentage' ? `${promo.discountValue}%` : `$${promo.discountValue.toLocaleString()}`} de descuento • {promo.applicableTo}
+                    {promo.applicableTo === 'specific_category' && ` (${promo.specificCategory})`}
                   </p>
                   {promo.startDate && (
                     <p className="text-xs text-gray-400 mt-1">

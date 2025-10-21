@@ -99,7 +99,21 @@ export default function Joyeria() {
                 const now = new Date().toISOString().split('T')[0];
                 if (p.startDate && now < p.startDate) return false;
                 if (p.endDate && now > p.endDate) return false;
-                return p.applicableTo === 'all' || p.applicableTo === 'jewelry';
+                
+                // Aplicable a todas las categorías
+                if (p.applicableTo === 'all') return true;
+                
+                // Aplicable a todas las joyas
+                if (p.applicableTo === 'jewelry') return true;
+                
+                // Aplicable a categoría específica
+                if (p.applicableTo === 'specific_category' && 
+                    p.productType === 'jewelry' && 
+                    p.specificCategory === item.category) {
+                  return true;
+                }
+                
+                return false;
               });
 
               // Calcular precio final

@@ -100,7 +100,21 @@ export default function Flores() {
               const now = new Date().toISOString().split('T')[0];
               if (p.startDate && now < p.startDate) return false;
               if (p.endDate && now > p.endDate) return false;
-              return p.applicableTo === 'all' || p.applicableTo === 'flowers';
+              
+              // Aplicable a todas las categorías
+              if (p.applicableTo === 'all') return true;
+              
+              // Aplicable a todas las flores
+              if (p.applicableTo === 'flowers') return true;
+              
+              // Aplicable a categoría específica
+              if (p.applicableTo === 'specific_category' && 
+                  p.productType === 'flowers' && 
+                  p.specificCategory === flower.category) {
+                return true;
+              }
+              
+              return false;
             });
 
             // Calcular precio final

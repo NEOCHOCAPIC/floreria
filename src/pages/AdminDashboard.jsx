@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogOut, LayoutDashboard, Package, Tag, FileText, Gem, Flower2, Home, Users, Settings, ChevronLeft, LogIn } from 'lucide-react';
+import { LogOut, LayoutDashboard, Package, Tag, FileText, Gem, Flower2, Home, Users, Settings, ChevronLeft, LogIn, Lock } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
+import { useUserRole } from '../hooks/useUserRole';
 import HomeEditor from './AdminPageEditors/HomeEditor';
 import QuienesSomosEditor from './AdminPageEditors/QuienesSomosEditor';
 import FlowersEditor from './AdminPageEditors/FlowersEditor';
 import JewelryEditor from './AdminPageEditors/JewelryEditor';
 import PromotionsEditor from './AdminPageEditors/PromotionsEditor';
+import UsersEditor from './AdminPageEditors/UsersEditor';
 
 // Componente StatCard
 const StatCard = ({ icon, title, value, color, textColor }) => {
@@ -30,6 +32,7 @@ const StatCard = ({ icon, title, value, color, textColor }) => {
 };
 
 export default function AdminDashboard() {
+  const { user: userRole, isAdmin, role, loading } = useUserRole();
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [stats] = useState({
@@ -96,7 +99,12 @@ export default function AdminDashboard() {
     { id: 'about', label: 'Quiénes Somos', icon: Users },
   ];
 
-  if (!user) {
+  const adminItems = [
+    { id: 'users', label: 'Gestión de Usuarios', icon: Users, adminOnly: true },
+    { id: 'settings', label: 'Configuración', icon: Settings, adminOnly: true },
+  ];
+
+  if (!user || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
         <div className="text-center">
@@ -125,7 +133,9 @@ export default function AdminDashboard() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold truncate">{user.email}</p>
-              <p className="text-xs text-purple-200">Admin</p>
+              <p className="text-xs text-purple-200">
+                {role === 'admin' ? '👑 Administrador' : role === 'editor' ? '✏️ Editor' : '👁️ Visor'}
+              </p>
             </div>
           </div>
         </div>
@@ -177,22 +187,26 @@ export default function AdminDashboard() {
             })}
           </nav>
 
-          {/* Navegación - Administración */}
-          <p className="text-xs font-bold text-purple-300 uppercase tracking-wider mb-3 mt-6">ADMINISTRACIÓN</p>
-          <nav className="space-y-2">
-            <motion.button
-              whileHover={{ x: 5 }}
-              onClick={() => setActiveTab('users')}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-left ${
-                activeTab === 'users'
-                  ? 'bg-purple-500 shadow-lg'
-                  : 'hover:bg-purple-600/50'
-              }`}
-            >
-              <Users size={20} />
-              <span className="font-medium">Gestionar Usuarios</span>
-            </motion.button>
-          </nav>
+          {/* Navegación - Administración (Solo para Admins) */}
+          {isAdmin && (
+            <>
+              <p className="text-xs font-bold text-purple-300 uppercase tracking-wider mb-3 mt-6">ADMINISTRACIÓN</p>
+              <nav className="space-y-2">
+                <motion.button
+                  whileHover={{ x: 5 }}
+                  onClick={() => setActiveTab('users')}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-left ${
+                    activeTab === 'users'
+                      ? 'bg-purple-500 shadow-lg'
+                      : 'hover:bg-purple-600/50'
+                  }`}
+                >
+                  <Users size={20} />
+                  <span className="font-medium">Gestionar Usuarios</span>
+                </motion.button>
+              </nav>
+            </>
+          )}
         </div>
 
         {/* Footer del Sidebar */}
@@ -282,6 +296,19 @@ export default function AdminDashboard() {
             {activeTab === 'promotions' && <PromotionsEditor />}
             {activeTab === 'home' && <HomeEditor />}
             {activeTab === 'about' && <QuienesSomosEditor />}
+            {activeTab === 'users' && (
+              isAdmin ? (
+                <UsersEditor />
+              ) : (
+                <div className="p-8 text-center">
+                  <div className="text-6xl mb-4">🔒</div>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-2">Acceso Denegado</h2>
+                  <p className="text-gray-600">
+                    Solo los administradores pueden gestionar usuarios.
+                  </p>
+                </div>
+              )
+            )}
           </motion.div>
         </main>
       </div>

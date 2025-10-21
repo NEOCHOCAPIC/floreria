@@ -38,7 +38,11 @@ export default function Promociones() {
   // Colores gradientes para las promociones (reservado para futura expansión)
   const filteredPromos = activeFilter === 'todos'
     ? promotions
-    : promotions.filter(p => p.applicableTo === activeFilter || p.applicableTo === 'all');
+    : promotions.filter(p => 
+        p.applicableTo === activeFilter || 
+        p.applicableTo === 'all' ||
+        (p.applicableTo === 'specific_category' && p.productType === activeFilter)
+      );
 
   return (
     <main className="flex-grow">
@@ -140,7 +144,14 @@ export default function Promociones() {
                           {promo.name}
                         </h3>
                         <p className="text-xs text-white/70 mt-1 capitalize">
-                          {promo.applicableTo === 'all' ? 'Todas las categorías' : promo.applicableTo === 'flowers' ? 'Flores' : 'Joyas'}
+                          {promo.applicableTo === 'all' 
+                            ? 'Todas las categorías' 
+                            : promo.applicableTo === 'flowers' 
+                            ? 'Flores' 
+                            : promo.applicableTo === 'jewelry'
+                            ? 'Joyas'
+                            : `${promo.productType === 'flowers' ? 'Flores' : 'Joyas'} - ${promo.specificCategory}`
+                          }
                         </p>
                       </div>
                     </div>
