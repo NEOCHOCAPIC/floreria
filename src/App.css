@@ -1,0 +1,22 @@
+
+/* Personalización de Body */
+@layer base {
+  body {
+    background: linear-gradient(to bottom right, rgb(253, 242, 242), rgb(243, 232, 255), rgb(240, 249, 255));
+    color: rgb(31, 41, 55);
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Componentes personalizados */
+@layer components {
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+}
