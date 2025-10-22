@@ -9,6 +9,7 @@ import Promociones from './pages/Promociones'
 import QuienesSomos from './pages/QuienesSomos'
 import AdminLogin from './pages/AdminLogin'
 import AdminDashboard from './pages/AdminDashboard'
+import WhatsAppButton from './components/WspButton'
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
             }
           />
         </Routes>
+        <WhatsAppButton />
       </div>
     </Router>
   )

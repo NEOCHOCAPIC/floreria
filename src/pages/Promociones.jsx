@@ -226,13 +226,18 @@ export default function Promociones() {
                     </div>
                   </div>
 
-                  {/* Botón */}
+                  {/* Botón WhatsApp */}
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      const message = `Hola! Me interesa cotizar:*${product.name}*\n${product.category ? `Categoría: ${product.category}\n` : ''}Precio: $${product.originalPrice.toLocaleString()}\n *Con descuento: $${product.finalPrice.toLocaleString()}*\n\n¿Me das más información?`;
+                      const encodedMessage = encodeURIComponent(message);
+                      window.open(`https://api.whatsapp.com/send?phone=56993177866&text=${encodedMessage}`, '_blank');
+                    }}
                     className="w-full bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white font-semibold py-3 px-6 rounded-lg transition"
                   >
-                    🔥 ¡Aprovechar Descuento!
+                    🔥 ¡Cotizar Descuento por WhatsApp!
                   </motion.button>
                 </div>
               </motion.div>

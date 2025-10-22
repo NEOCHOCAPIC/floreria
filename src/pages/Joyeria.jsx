@@ -194,17 +194,22 @@ export default function Joyeria() {
                     )}
                   </div>
 
-                  {/* Botón de Compra */}
+                  {/* Botón WhatsApp */}
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      const message = `Hola! Me interesa cotizar: *${item.name}*\n${item.category ? `Descripccion ${item.description}\n` : ''}Precio: $${item.price.toLocaleString()}${hasDiscount ? ` *Con descuento: $${finalPrice.toLocaleString()}*` : ''}\n\n¿Me das más información?`;
+                      const encodedMessage = encodeURIComponent(message);
+                      window.open(`https://api.whatsapp.com/send?phone=56993177866&text=${encodedMessage}`, '_blank');
+                    }}
                     className={`w-full font-semibold py-2 px-6 rounded-lg transition ${
                       hasDiscount
                         ? 'bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 text-white'
                         : 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white'
                     }`}
                   >
-                    {hasDiscount ? '🔥 ¡Aprovechar Descuento!' : '🛒 Comprar'}
+                    {hasDiscount ? '🔥 ¡Cotizar Descuento!' : 'Cotizar por WhatsApp'}
                   </motion.button>
                 </div>
               </motion.div>
